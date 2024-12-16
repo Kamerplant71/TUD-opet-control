@@ -170,6 +170,11 @@ class OPET:
         '''Returns the contents of an EEPROM `address`'''
         return self.send_verify(f'EEROM:READ?\t{address}')[1]
 
+    def write_eeprom(self, address, value):
+        '''Sets EEPROM `address` to `value`, returning the value that was
+        written (sometimes rounded or reformatted by the hardware).'''
+        return self.send_verify(f'EEROM:WRITE\t{address}\t{value}')[1]
+
     def reset(self):
         self.send_verify('*RST')
 
