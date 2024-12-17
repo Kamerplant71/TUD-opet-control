@@ -119,7 +119,6 @@ def run_calibration(
 
     # Reset the OPET
     target_opet.reset()
-    sleep(0.5)
 
     # Store the OPET's identification and address in the report
     report_addendum['opet_identification'] = {

@@ -175,8 +175,13 @@ class OPET:
         written (sometimes rounded or reformatted by the hardware).'''
         return self.send_verify(f'EEROM:WRITE\t{address}\t{value}')[1]
 
-    def reset(self):
+    def reset(self, skip_delay=False):
+        '''Resets the OPET, sleeping 300 ms before returning. If anything is
+        sent during this delay, it won't be properly received and processed.
+        If `skip_delay`, the delay is skipped.'''
         self.send_verify('*RST')
+        if not skip_delay:
+            sleep(0.3)
 
     @property
     def address_integer(self):
