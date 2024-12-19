@@ -197,9 +197,13 @@ class OPET:
 
     @property
     def hardware_configuration(self):
-        ''''HC' for the high-current configuration and 'LC' for low-current'''
-        # TODO: prove that this can be depended on (only tested on HC)
-        return self._hardware_configurations[int(self.read_eeprom(2))]
+        ''''HC' for the high-current configuration and 'LC' for low-current, 
+        based on the highest available current range'''
+        highest_current_range = float(self.read_eeprom(82))
+        if highest_current_range == 15:
+            return 'HC'
+        elif highest_current_range == 0.32:
+            return 'LC'
 
     @property
     def current_ranges(self):
