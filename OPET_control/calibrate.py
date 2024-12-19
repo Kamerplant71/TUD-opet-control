@@ -120,6 +120,14 @@ def run_calibration(
     # Reset the OPET
     target_opet.reset()
 
+    # Put it in Voc or Isc according to the cal type
+    if calibration_type in current_calibration_types:
+        target_opet.mode = 'isc'
+    elif calibration_type in voltage_calibration_types:
+        target_opet.mode = 'voc'
+    # Activate OPET output
+    target_opet.output_enabled = True
+
     # Store the OPET's identification and address in the report
     report_addendum['opet_identification'] = {
         k: v.decode() for k, v in target_opet.identification.items()
