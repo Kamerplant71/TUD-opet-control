@@ -47,7 +47,7 @@ def validate_cal(
 
     # Check if a small change in scale
     scale_change = (scale_old - scale_new) / scale_old
-    scale_change_threshold = 0.05
+    scale_change_threshold = 0.1
     if abs(scale_change) > scale_change_threshold:
         raise RuntimeError(f'''
             Calibration is invalid: Scale change is too big. Scale change is
@@ -56,7 +56,7 @@ def validate_cal(
 
     # Check if a small change in offset
     offset_change = (offset_old - offset_new) / offset_old
-    offset_change_threshold = 0.05
+    offset_change_threshold = 0.1
     if abs(offset_change) > offset_change_threshold:
         raise RuntimeError(f'''
             Calibration is invalid: Offset change is too big. Offset change is
