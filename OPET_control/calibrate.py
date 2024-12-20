@@ -325,6 +325,10 @@ def run_calibration(
 
         # Add this range's results to the results list
         cal_results_all.append(cal_result_single.copy())
+
+    # Reset the OPET to get it out of calibration mode
+    target_opet.reset()
+
     # Store all ranges' results in the report
     report_addendum['calibration_results'] = cal_results_all
     if report_destination:
