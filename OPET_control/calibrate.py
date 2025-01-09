@@ -1,7 +1,6 @@
 import numpy as np
 from scipy.stats import kendalltau, pearsonr
 from scipy.optimize import curve_fit
-from time import sleep
 from datetime import datetime
 import json
 from pathlib import Path
