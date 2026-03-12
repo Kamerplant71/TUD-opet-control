@@ -91,12 +91,13 @@ class OPETBus:
 
 class OPET:
     '''Represents a single OPET'''
-    def __init__(self, opet_bus, address_integer):
+    def __init__(self, opet_bus, address_integer, iv_time_multiplier=1):
         '''`opet_bus` is an instance of OPETBus and address_integer is the
         OPET's address as set with the on-board jumpers.'''
         self._address_integer = address_integer
         self._address = chr(64 + address_integer)
         self._bus = opet_bus
+        self.iv_time_multiplier = iv_time_multiplier
         # TODO: Confirm the EEPROM is really set this way for the HW version
         # (we've only checked it on HC units)
         self._hardware_configurations = {
@@ -400,7 +401,9 @@ class OPET:
         expected_measurement_duration = int(reply[0]) / 1000
         self.available_time = (
             datetime.now().astimezone()
-            + timedelta(seconds=expected_measurement_duration)
+            + timedelta(seconds=(
+                self.iv_time_multiplier * expected_measurement_duration
+            ))
         )
         if delay:
             sleep(expected_measurement_duration)
