@@ -2,11 +2,11 @@ from time import sleep
 from datetime import datetime, timedelta
 
 
-class TimeoutError(Exception):
+class OPETTimeoutError(Exception):
     '''Raise this when OPET has not replied before the bus's timeout'''
 
     def __init__(self):
-        super(TimeoutError, self).__init__()
+        super(OPETTimeoutError, self).__init__()
 
     def __str__(self):
         return 'Got an empty reply on the OPET bus because the OPET bus\'s \
@@ -73,7 +73,7 @@ class OPETBus:
         self.ser.write(address + b'#' + message)
         reply = self.ser.readline()
         if reply == b'':
-            raise TimeoutError
+            raise OPETTimeoutError
         if not skip_verify:
             reply_command = reply.split(b'\t')[0]
             expected_reply_command = (
