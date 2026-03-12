@@ -1,3 +1,9 @@
+"""Core classes for communicating with OPET loads over an RS485 bus.
+
+Provides `OPETBus` for the shared serial bus and `OPET` for individual load
+control, measurement, and configuration.
+"""
+
 from time import sleep
 from datetime import datetime, timedelta
 
@@ -63,9 +69,9 @@ class OPETBus:
         If `raw_reply`, this returns the exact reply string. Otherwise, this
         returns a list of the elements in the tab-separated reply, with the
         echoed command and the final line ending removed.'''
-        if type(address) == str:
+        if isinstance(address, str):
             address = address.encode('ASCII')
-        if type(message) == str:
+        if isinstance(message, str):
             message = message.encode('ASCII')
         if message[-1] != 10:
             message += b'\n'
@@ -205,6 +211,11 @@ class OPET:
             return 'HC'
         elif highest_current_range == 0.32:
             return 'LC'
+        else:
+            raise RuntimeError(
+                f'Unexpected highest current range {highest_current_range} '
+                f'read from EEPROM address 82. Expected 15 (HC) or 0.32 (LC).'
+            )
 
     @property
     def current_ranges(self):
@@ -342,7 +353,7 @@ class OPET:
             'cset': 4,
             'mppt': 5
         }
-        if type(mode) != int:
+        if not isinstance(mode, int):
             mode = modes[mode]
         self.send_verify('LOAD:MODE\t' + str(mode))
         # We can only check the actual value of mode if output is enabled,
@@ -510,7 +521,7 @@ class OPET:
         # out-of-range positive integer as the command to auto-range. So when
         # this setter gets 'auto', we instead send a definitely out-of-range
         # number here:
-        if type(value) == str:
+        if isinstance(value, str):
             value = value.encode('ASCII')
         if value == b'auto':
             self.send_verify('RANGE:IDVOLT\t' + str(999))
@@ -538,7 +549,7 @@ class OPET:
         # out-of-range positive integer as the command to auto-range. So when
         # this setter gets 'auto', we instead send a definitely out-of-range
         # number here:
-        if type(value) == str:
+        if isinstance(value, str):
             value = value.encode('ASCII')
         if value == b'auto':
             self.send_verify('RANGE:IDCURR\t' + str(999))
