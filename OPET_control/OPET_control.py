@@ -564,7 +564,7 @@ class OPET:
 
     @property
     def voltage_range(self):
-        '''Present current range, in A'''
+        '''Present voltage range, in V'''
         return self.ranges[0]
 
     def activate_voltage_calibration_mode(self):
