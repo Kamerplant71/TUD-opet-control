@@ -84,7 +84,7 @@ When running a HC current calibration:
 2. connect the high current output (+) of the calibrator to the external MOSFET port position S and the low current output (-) to the PV curr C- input on the OPET. 
 
 ## Running Calibration
-Check the OPET serial bus address against the sticker on the board, when running the cal routine you must have the correct OPET serial bus address.
+Check the OPET serial bus address against the jumper settings on the circuit board, when running the cal routine you must have the correct OPET serial bus address. The address is an integer from 0 to 31, set using jumpers on the board.
 
 For the first calibration of the day you may want to run the script without updating cal constants to verify that the cal constants are only slightly different. However when using the script *ensure that update_calibration_constants is set to True* in order to actually write the calibration to the OPETs
 
