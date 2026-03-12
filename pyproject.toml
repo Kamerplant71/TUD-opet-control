@@ -1,3 +1,29 @@
 [build-system]
 requires = ["setuptools >= 64"]
 build-backend = "setuptools.build_meta"
+
+[project]
+name = "OPET_control"
+version = "0.1.0"
+description = "Python interface for controlling OPET photovoltaic electronic loads over RS485"
+readme = "README.md"
+license = "BSD-3-Clause"
+requires-python = ">= 3.10"
+authors = [
+    { name = "Alliance for Energy Innovation, LLC" },
+]
+maintainers = [
+    { name = "Tim Silverman", email = "timothy.silverman@nlr.gov" },
+]
+dependencies = [
+    "pyserial",
+]
+
+[project.optional-dependencies]
+calibration = [
+    "numpy",
+    "scipy",
+]
+
+[project.urls]
+Repository = "https://github.com/NatLabRockies/opet-control"
