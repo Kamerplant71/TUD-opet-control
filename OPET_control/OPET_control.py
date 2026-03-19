@@ -253,10 +253,15 @@ class OPET:
     def status_integer(self):
         return int(self.send_verify('*SBR?')[0])
     
-    def parse_system_status_integer(self, integer):
+    @staticmethod
+    def parse_system_status_integer(integer):
         '''Parses the system status integer, returned as the `status` item
         of `get_sample()` or as the .status property, into a human-readable
-        dictionary.'''
+        dictionary.
+
+        Can be called without a device connection:
+            OPET.parse_system_status_integer(5)
+        '''
         status_bits = [
             'output_enabled',
             'calibration_mode',
