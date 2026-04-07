@@ -1,3 +1,8 @@
+"""Calibration routines for OPET loads using a calibrator.
+
+Requires the ``calibration`` extra: ``pip install ".[calibration]"``
+"""
+
 import numpy as np
 from scipy.stats import kendalltau, pearsonr
 from scipy.optimize import curve_fit
@@ -79,7 +84,7 @@ def run_calibration(
     - voltage: voltage calibration
     - current-low: current calibration, up to the calibrator's current post
     switch point (3 A for the Fluke 5522A)
-    - current-high: voltage calibration, above the calibrator's current post
+    - current-high: current calibration, above the calibrator's current post
     switch point (3 A for the Fluke 5522A)
 
     `n_points` is how many voltage or current points are used between zero and
