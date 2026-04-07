@@ -1,189 +1,259 @@
 # OPET_control
+ 
+## About
+Multiple OPET loads connect to a single RS485 bus. This library provides an `OPETBus` object for the bus and an `OPET` object for each load on the bus.
 
-[![License: BSD 3-Clause](https://img.shields.io/badge/License-BSD_3--Clause-blue.svg)](LICENSE)
-[![Python >= 3.10](https://img.shields.io/badge/Python-≥3.10-blue.svg)](https://www.python.org)
+**The best place to get started is in the Jupyter notebook `examples/basic_operations.ipynb`.**
 
-Python interface for controlling **OPET** (Open PV Electrical Tool) photovoltaic electronic loads over RS485.
+The library has incomplete coverage of the OPET hardware's features. We'll add to it as we go.
 
-Multiple OPET loads connect to a single RS485 bus. This library provides an `OPETBus` object for the bus and an `OPET` object for each load on the bus.
+The library has incomplete documentation. For now, refer to the OPET docx manual for information about the load.
 
-## Installation
+## Set up
 
-```bash
+### Dependency list
+see below for more detailed install instructions
+
+- fluke5522a_calibrator
+- pyserial
+- numpy
+- scipy
+
+If desired set up an anaconda environment and activate it:
+```
+conda create --name OPETcalibration pyserial numpy scipy
+conda activate OPETcalibration
+```
+
+otherwise install pyserial, numpy, and scipy
+
+Then use pip to install both of the git modules with python
+```
+cd opet-control
+pip install .
+cd ../fluke5522a
 pip install .
 ```
 
-To include dependencies for calibration (`numpy`, `scipy`):
+## Using a jupyter notebook with conda env
+If not using a conda env skip this section
 
-```bash
-pip install ".[calibration]"
+### Option 1 GUI + no new jupyter install
+Set up a kernel using these commands:
+```
+conda install ipykernel --name OPETcalibration
+python -m ipykernel install --user --name OPETcalibration --display-name "Python (OPETcalibration)"
 ```
 
-## Quick start
+When this is done open jupyter notebook using anaconda navigator. Open the example notebook and run the kernel Python (OPETcalibration) in order to run 
 
-```python
-import serial
-from OPET_control import OPETBus, OPET
-
-# Open the RS485 serial connection
-ser = serial.Serial('/dev/ttyUSB0', baudrate=115200, timeout=1)
-
-# Create the bus and a load object (address set by on-board jumpers, 0-31)
-bus = OPETBus(ser)
-opet = OPET(bus, address_integer=5)
-
-# Read identification and a measurement sample
-print(opet.identification)
-print(opet.sample)
-
-# Set mode to maximum power point tracking and enable output
-opet.mode = 'mppt'
-opet.output_enabled = True
-
-# Take a single measurement
-print(opet.sample)
-
-# Run an I-V curve
-opet.start_iv_curve(delay=True)
-print(opet.iv_data)
+### Option 2 (requires admin rights)
+Install jupyter within the environment 
+```
+conda install jupyter --name OPETcalibration
 ```
 
-See [`examples/basic_operations.ipynb`](examples/basic_operations.ipynb) for a more complete walkthrough.
+open jupyter notebook with in the active conda environment (either by selecting the environment in the GUI or running from an active anaconda shell)
 
-## API reference
-
-<details>
-<summary><strong>OPET properties and methods</strong></summary>
-
-### Measurement
-
-| Member | Type | Description |
-|---|---|---|
-| `sample` | property | Dictionary with a single measurement (voltage, current, power, temperatures, status, etc.) |
-| `start_iv_curve(delay=False)` | method | Requests an I-V curve measurement. If `delay=True`, blocks until complete. Returns estimated duration in seconds. |
-| `iv_data` | property | Stored I-V curve data (`voltage`, `current` lists) from the latest measurement |
-
-### Load control
-
-| Member | Type | Description |
-|---|---|---|
-| `mode` | get/set | Load mode: `'off'` (0), `'voc'` (1), `'isc'` (2), `'vset'` (3), `'cset'` (4), `'mppt'` (5) |
-| `output_enabled` | get/set | Enable or disable the load output (`True`/`False`) |
-| `fixed_voltage` | get/set | Fixed voltage setpoint (used when mode is `'vset'`) |
-| `fixed_current` | get/set | Fixed current setpoint (used when mode is `'cset'`) |
-
-### Range control
-
-| Member | Type | Description |
-|---|---|---|
-| `voltage_range` | property | Present voltage range, in V |
-| `current_range` | property | Present current range, in A |
-| `voltage_ranges` | property | All voltage ranges available for this load (dict) |
-| `current_ranges` | property | All current ranges available for this load (dict) |
-| `voltage_range_index` | get/set | Index of the voltage range. Set to `'auto'` for auto-ranging. |
-| `current_range_index` | get/set | Index of the current range. Set to `'auto'` for auto-ranging. |
-| `ranges` | property | Currently active (voltage, current) range as a tuple |
-
-### ADC configuration
-
-| Member | Type | Description |
-|---|---|---|
-| `n_adc_average_vc` | get/set | Number of voltage/current measurements averaged per cycle |
-| `n_adc_cycles_vc` | get/set | Number of cycles averaged for voltage and current |
-| `n_adc_average_other` | get/set | Number of non-V/I measurements averaged per cycle |
-
-### Analog regulator
-
-| Member | Type | Description |
-|---|---|---|
-| `gain_proportional` | get/set | Proportional gain resistor index (0–3). Higher = slower but more stable. |
-| `gain_integral` | get/set | Integral gain capacitor index (0–3). Higher = slower but more stable. |
-
-### Device info and status
-
-| Member | Type | Description |
-|---|---|---|
-| `identification` | property | Dict with `hardware_version`, `software_version`, `serial_number` |
-| `address_integer` | property | The OPET's bus address (0–31) |
-| `hardware_configuration` | property | `'HC'` (high-current) or `'LC'` (low-current) |
-| `status` | property | Human-readable dict of status flags |
-| `status_integer` | property | Raw status register value |
-| `available` | property | `True` if the OPET is ready for communication |
-| `available_time` | get/set | Datetime before which no communication should be attempted |
-
-### Low-level
-
-| Member | Type | Description |
-|---|---|---|
-| `reset()` | method | Resets the OPET (300 ms delay) |
-| `send_verify(message, ...)` | method | Send a raw command and verify the reply |
-| `read_eeprom(address)` | method | Read an EEPROM address |
-| `write_eeprom(address, value)` | method | Write to an EEPROM address |
-| `operation_complete()` | method | Check if the OPET has finished its current operation |
-
-### Calibration (used by `calibrate.py`)
-
-| Member | Type | Description |
-|---|---|---|
-| `activate_voltage_calibration_mode()` | method | Enter voltage calibration mode (readings in counts) |
-| `activate_current_calibration_mode()` | method | Enter current calibration mode (readings in counts) |
-| `calibration_scale` | get/set | Scale factor for the active calibration range |
-| `calibration_offset` | get/set | Offset for the active calibration range |
-
-</details>
-
-## Calibration
-
-Calibration requires a Fluke 5522A calibrator and the separate [`fluke5522a_calibrator`](https://github.com/NatLabRockies/fluke5522a) package. Install with calibration dependencies:
-
-```bash
-pip install ".[calibration]"
-pip install fluke5522a_calibrator   # or: cd ../fluke5522a && pip install .
-```
-
-See [`examples/opet_calibration_simple.ipynb`](examples/opet_calibration_simple.ipynb) for the step-by-step calibration notebook.
-
-<details>
-<summary><strong>Calibration hardware setup</strong></summary>
-
-### Connecting PC to OPET and calibrator
-
+## Connecting PC to OPET and Calibrator
 The calibrator requires 30 minutes of warmup time, so plan to allow time for it to start up.
 
-Use an RS485 to USB cable with a null adapter and a gender changer to connect your PC to the Fluke 5522A calibrator. Connect the OPET to your PC using the RS485 to USB cable.
+Use an RS485 to USB cable with a null adapter and a gender changer to connect your PC to the fluke 5522a calibrator. Connect the OPET to your pc using the RS485 to USB cable.
 
-Connect the 24V DC power to the OPET.
+Connect the 24V dc power to the OPET.
 
-Now set up the calibrator. Follow on-screen instructions to run 0 cal if prompted.
+Now set up the calibrator. Follow on screen instructions to run 0 cal if prompted.
 
-Use your PC to find which COM port (or `/dev/tty*` device) the calibrator and OPET are connected to. Edit the example notebook to change the referenced ports. If the notebook throws an error like:
+Use your PC to find which COM port the calibrator and OPET are connected to. Edit the example notebook to change the referenced COM ports. If the notebook will not connect to the calibrator and throws an error like:
 
 ```
 SerialException: could not open port 'COM6': FileNotFoundError(2, 'Access is denied.', None, 2)
 ```
 
-Check that the Fluke 5522A is set to communicate via serial (not GPIB), and that no other process is using the port.
+Check that the fluke 5522a is set to communicate via serial and not GPIB
 
-### Connecting OPET to calibrator
+Alternatively see if any other processes may be using the COM port
 
-**Voltage calibration:** Connect the voltage output of the calibrator to the voltage sense of the OPET. Connect (+) to (+) and (-) to (-), connect V- to S. At NLR this is done with a cable labeled ALL OPET VOLTAGE.
+## Connect OPET to Calibrator
+When running a voltage calibration: connect the voltage output of the calibrator to the voltage sense of the OPET. Connect (+) to (+) and (-) to (-), connect the V- to S (this is the ALL OPET VOLTAGE cable).
 
-**LC current calibration:** Connect the low current output (+) of the calibrator to the external MOSFET port position S and the low current output (-) to the voltage S input on the OPET.
+When running a LC current calibration: connect the low current output (+) of the calibrator to the external MOSFET port position S and the low current output (-) to the voltage S input on the OPET.
 
-**HC current calibration:**
-1. Connect the low current output (+) of the calibrator to the external MOSFET port position S and the low current output (-) to the PV curr C- input on the OPET.
-2. Connect the high current output (+) of the calibrator to the external MOSFET port position S and the high current output (-) to the PV curr C- input on the OPET.
+When running a HC current calibration: 
+1. connect the low current output (+) of the calibrator to the external MOSFET port position S and the low current output (-) to the PV curr C- input on the OPET. 
+2. connect the high current output (+) of the calibrator to the external MOSFET port position S and the low current output (-) to the PV curr C- input on the OPET. 
 
-### Running calibration
+## Running Calibration
+Check the OPET serial bus address against the jumper settings on the circuit board, when running the cal routine you must have the correct OPET serial bus address. The address is an integer from 0 to 31, set using jumpers on the board.
 
-Check the OPET serial bus address against the jumper settings on the circuit board. The address is an integer from 0 to 31, set using jumpers on the board.
+For the first calibration of the day you may want to run the script without updating cal constants to verify that the cal constants are only slightly different. However when using the script *ensure that update_calibration_constants is set to True* in order to actually write the calibration to the OPETs
 
-For the first calibration of the day you may want to run the script without updating cal constants to verify that the new constants are only slightly different. However, when using the script, **ensure that `update_calibration_constants` is set to `True`** in order to actually write the calibration to the OPETs.
+The **Current (high ranges)** section does not need to be run for LC OPETS but the **Current (low ranges)** needs be run for both low and high current OPETs.
 
-The **Current (high ranges)** section does not need to be run for LC OPETs, but **Current (low ranges)** needs to be run for both low and high current OPETs.
+```
+Help on OPET in module OPET_control.OPET_control object:
 
-</details>
+class OPET(builtins.object)
+ |  OPET(opet_bus, address_integer)
+ |  
+ |  Represents a single OPET
+ |  
+ |  Methods defined here:
+ |  
+ |  __init__(self, opet_bus, address_integer)
+ |      `opet_bus` is an instance of OPETBus and address_integer is the
+ |      OPET's address as set with the on-board jumpers.
+ |  
+ |  activate_current_calibration_mode(self)
+ |  
+ |  activate_voltage_calibration_mode(self)
+ |  
+ |  operation_complete(self)
+ |      # @property
+ |  
+ |  parse_system_status_integer(self, integer)
+ |      Parses the system status integer, returned as the `status` item
+ |      of `get_sample()` or as the .status property, into a human-readable
+ |      dictionary.
+ |  
+ |  read_eeprom(self, address)
+ |      Returns the contents of an EEPROM `address`
+ |  
+ |  reset(self)
+ |  
+ |  send_verify(self, message, raw_reply=False, skip_verify=False, check_availability=True, block_until_available=False)
+ |      This is a wrapper for the OPETBus's send_verify method.
+ |      
+ |      If `check_availability`, this checks if the OPET's `available_time`
+ |      property is in the future. If it is, we raise NotAvailableError,
+ |      except if `block_until_available` is also true, in which case we wait
+ |      until `available_time` before attempting communication.
+ |  
+ |  start_iv_curve(self, delay=False)
+ |      Requests an I-V curve measurement. The actual measurement is read
+ |      back using the .iv_data property. Returns an estimated time, in ms, for
+ |      the curve to complete. If `delay` is True, this blocks for this amount
+ |      of time.
+ |      
+ |      If this method returns zero, the measurement has not been started.
+ |      Possible reasons include:
+ |      - bias voltage error is active
+ |      - probably others
+ |      
+ |      After the curve is started, the unit can receive messages, but can't
+ |      respond until the curve is finished. This method automatically sets
+ |      the `available_time` property to the datetime when the measurement is
+ |      expected to be finished. It is suggested that communication not be
+ |      attempted before `available_time` is reached.
+ |  
+ |  ----------------------------------------------------------------------
+ |  Readonly properties defined here:
+ |  
+ |  address_integer
+ |  
+ |  available
+ |  
+ |  current_range
+ |      Present current range, in A
+ |  
+ |  current_ranges
+ |      Current ranges, in A, available for this load
+ |  
+ |  hardware_configuration
+ |      'HC' for the high-current configuration and 'LC' for low-current
+ |  
+ |  identification
+ |  
+ |  iv_data
+ |      Stored I-V curve data from the latest IV or transient measurement.
+ |      The measurement is updated using `start_iv_curve()`.
+ |  
+ |  max_current_range_index
+ |  
+ |  max_voltage_range_index
+ |  
+ |  ranges
+ |      Currently active (voltage, current) range, in a tuple
+ |  
+ |  sample
+ |      Dictionary with a single measurement sample
+ |  
+ |  status
+ |  
+ |  status_integer
+ |  
+ |  voltage_range
+ |      Present current range, in A
+ |  
+ |  voltage_ranges
+ |      Voltage ranges, in V, available for this load
+ |  
+ |  ----------------------------------------------------------------------
+ |  Data descriptors defined here:
+ |  
+ |  __dict__
+ |      dictionary for instance variables (if defined)
+ |  
+ |  __weakref__
+ |      list of weak references to the object (if defined)
+ |  
+ |  available_time
+ |  
+ |  calibration_offset
+ |  
+ |  calibration_scale
+ |  
+ |  current_range_index
+ |      Index of the current range. See load.current_ranges_all for values.
+ |      'auto' is a special value that sets the load to auto-range.
+ |  
+ |  fixed_current
+ |      The fixed current setting, which is only used when .mode is 4
+ |      ('cset') and output is 1 (on)
+ |  
+ |  fixed_voltage
+ |      The fixed voltage setting, which is only used when .mode is 3
+ |      ('vset') and output is 1 (on)
+ |  
+ |  gain_integral
+ |      Index of the capacitor that sets the integral gain of the analog
+ |      PI regulator. Possible values are (0, 1, 2, 3). Increasing the value
+ |      increases the value of the capacitor, making the loop slower, but more
+ |      stable.
+ |  
+ |  gain_proportional
+ |      Index of the resistor that sets the proportional gain of the analog
+ |      PI regulator. Possible values are (0, 1, 2, 3). Increasing the value
+ |      increases the value of the resistor, making the loop slower, but more
+ |      stable.
+ |  
+ |  mode
+ |      The load mode of the OPET, set as a string or integer and returned
+ |      as an integer:
+ |      'off': 0
+ |      'voc': 1
+ |      'isc': 2
+ |      'vset': 3
+ |      'cset': 4
+ |      'mppt': 5
+ |  
+ |  n_adc_average_other
+ |      Number of measurements other than voltage and current averaged
+ |      per cycle
+ |  
+ |  n_adc_average_vc
+ |      Number of voltage and current measurements averaged per cycle
+ |  
+ |  n_adc_cycles_vc
+ |      Number of cycles averaged for current and voltage
+ |  
+ |  output_enabled
+ |  
+ |  voltage_range_index
+ |      Index of the voltage range. See load.voltage_ranges for values.
+ |      'auto' is a special value that sets the load to auto-range.
+ ```
 
-## Disclaimer
+# Disclaimer
 
-NREL/Alliance for Sustainable Energy, LLC/DOE disclaim all warranties, express or implied, including the warranties of merchantability or fitness for a particular purpose, and make no warranty as to the accuracy, completeness, or usefulness of any information provided herein. Use of this package is at the user's own risk.
+DISCLAIMER: NREL/ALLIANCE FOR SUSTAINABLE ENERGY, LLC/DOE DISCLAIM ALL WARRANTIES, EXPRESS OR IMPLIED, INCLUDING THE WARRANTIES OF MERCHANTABILITY OR FITNESS FOR A PARTICULAR PURPOSE, AND MAKES NO WARRANTY AS TO THE ACCURACY, COMPLETENESS, OR USEFULNESS OF ANY INFORMATION PROVIDED HEREIN. USE OF THIS PACKAGE IS AT THE USER’S OWN RISK.
