@@ -1,12 +1,18 @@
+"""Core classes for communicating with OPET loads over an RS485 bus.
+
+Provides `OPETBus` for the shared serial bus and `OPET` for individual load
+control, measurement, and configuration.
+"""
+
 from time import sleep
 from datetime import datetime, timedelta
 
 
-class TimeoutError(Exception):
+class OPETTimeoutError(Exception):
     '''Raise this when OPET has not replied before the bus's timeout'''
 
     def __init__(self):
-        super(TimeoutError, self).__init__()
+        super(OPETTimeoutError, self).__init__()
 
     def __str__(self):
         return 'Got an empty reply on the OPET bus because the OPET bus\'s \
@@ -63,9 +69,9 @@ class OPETBus:
         If `raw_reply`, this returns the exact reply string. Otherwise, this
         returns a list of the elements in the tab-separated reply, with the
         echoed command and the final line ending removed.'''
-        if type(address) == str:
+        if isinstance(address, str):
             address = address.encode('ASCII')
-        if type(message) == str:
+        if isinstance(message, str):
             message = message.encode('ASCII')
         if message[-1] != 10:
             message += b'\n'
@@ -73,7 +79,7 @@ class OPETBus:
         self.ser.write(address + b'#' + message)
         reply = self.ser.readline()
         if reply == b'':
-            raise TimeoutError
+            raise OPETTimeoutError
         if not skip_verify:
             reply_command = reply.split(b'\t')[0]
             expected_reply_command = (
@@ -205,6 +211,11 @@ class OPET:
             return 'HC'
         elif highest_current_range == 0.32:
             return 'LC'
+        else:
+            raise RuntimeError(
+                f'Unexpected highest current range {highest_current_range} '
+                f'read from EEPROM address 82. Expected 15 (HC) or 0.32 (LC).'
+            )
 
     @property
     def current_ranges(self):
@@ -242,10 +253,15 @@ class OPET:
     def status_integer(self):
         return int(self.send_verify('*SBR?')[0])
     
-    def parse_system_status_integer(self, integer):
+    @staticmethod
+    def parse_system_status_integer(integer):
         '''Parses the system status integer, returned as the `status` item
         of `get_sample()` or as the .status property, into a human-readable
-        dictionary.'''
+        dictionary.
+
+        Can be called without a device connection:
+            OPET.parse_system_status_integer(5)
+        '''
         status_bits = [
             'output_enabled',
             'calibration_mode',
@@ -258,7 +274,33 @@ class OPET:
             'main_loop_timer_overrun',
             'iv_data_ready',
             'voltage_range_hold_up',
-            'current_range_hold_up'
+            'current_range_hold_up',
+            'dissipation_temerature_alarm',
+            'temperature monitoring_alarm'
+        ]
+        status = dict.fromkeys(status_bits, 0)
+        for n, key in enumerate(status_bits):
+            if integer & (1 << n):
+                status[key] = 1
+        return status
+
+    def parse_system_iv_status_integer(integer):
+        '''Parses the system iv curve status integer, returned as the `status` item
+        into a human-readable
+        dictionary.
+
+        Can be called without a device connection:
+            OPET.parse_system_iv_status_integer(5)
+        '''
+        status_bits = [
+            'IV_Report_OverCurr_Bypass_Active',
+            'IV_Report_OverTemp_Active',
+            'IV_Report_BiasVolt_Fault',
+            'none',
+            'IV_Report_Volt_AI_Over_Load',
+            'IV_Report_Volt_AI_Under_R',
+            'IV_Report_Curr_AI_Over_R',
+            'IV_Report_Curr_AI_Under_R'
         ]
         status = dict.fromkeys(status_bits, 0)
         for n, key in enumerate(status_bits):
@@ -284,9 +326,18 @@ class OPET:
         ]
         measurement_time = datetime.now().astimezone()
         reply = self.send_verify('READ?')
-        reply = dict(zip(keys, reply))
-        for key in keys[1:]:
-            reply[key] = float(reply[key])
+        if len(reply) == 8: #If longer reply, module temp is available
+            keys.append('temperature_cell')
+            reply = dict(zip(keys, reply))
+            for key in keys[1:]:
+                reply[key] = float(reply[key])
+
+        else: #Temperature cell not available, set to none
+            reply = dict(zip(keys, reply))
+            for key in keys[1:]:
+                reply[key] = float(reply[key])
+            reply['temperature_cell'] = None
+
         reply['power'] = reply['voltage']*reply['current']
         reply['status_integer'] = int(reply['status_integer'])
         reply['measurement_time'] = measurement_time
@@ -342,7 +393,7 @@ class OPET:
             'cset': 4,
             'mppt': 5
         }
-        if type(mode) != int:
+        if not isinstance(mode, int):
             mode = modes[mode]
         self.send_verify('LOAD:MODE\t' + str(mode))
         # We can only check the actual value of mode if output is enabled,
@@ -415,10 +466,16 @@ class OPET:
         The measurement is updated using `start_iv_curve()`.'''
         result = {}
         reply = self.send_verify('IV:DATA?')
-        # TODO: parse this iv_status integer into a human-readable dictionary
         result['iv_status'] = int(reply[0])
-        result['voltage'] = [float(value) for value in reply[1::2]]
-        result['current'] = [float(value) for value in reply[2::2]]
+        if len(reply) % 2 ==1: #Uneven amount of results, no temp data
+            result['temperature_cell'] = None
+            result['voltage'] = [float(value) for value in reply[1::2]]
+            result['current'] = [float(value) for value in reply[2::2]]
+
+        else: #even amount of result, temp data available
+            result['temperature_cell'] = float(reply[1])
+            result['voltage'] = [float(value) for value in reply[2::2]]
+            result['current'] = [float(value) for value in reply[3::2]]
         return result
 
     @property
@@ -510,7 +567,7 @@ class OPET:
         # out-of-range positive integer as the command to auto-range. So when
         # this setter gets 'auto', we instead send a definitely out-of-range
         # number here:
-        if type(value) == str:
+        if isinstance(value, str):
             value = value.encode('ASCII')
         if value == b'auto':
             self.send_verify('RANGE:IDVOLT\t' + str(999))
@@ -538,7 +595,7 @@ class OPET:
         # out-of-range positive integer as the command to auto-range. So when
         # this setter gets 'auto', we instead send a definitely out-of-range
         # number here:
-        if type(value) == str:
+        if isinstance(value, str):
             value = value.encode('ASCII')
         if value == b'auto':
             self.send_verify('RANGE:IDCURR\t' + str(999))
@@ -564,7 +621,7 @@ class OPET:
 
     @property
     def voltage_range(self):
-        '''Present current range, in A'''
+        '''Present voltage range, in V'''
         return self.ranges[0]
 
     def activate_voltage_calibration_mode(self):

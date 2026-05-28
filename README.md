@@ -1,5 +1,13 @@
 # OPET_control
- 
+
+This fork of the OPET_control is to have some extra functionalities related to the PV monitoring setup at the TU Delft.
+These extra functionalities are:
+
+- Reading two extra status bits in `parse_system_status_integer(integer)`
+- New function `parse_system_iv_status_integer(integer)` to read status bits of IV_curve measurement.
+- Added reading the temperature of the module in `sample(self)` if available
+- Added reading the temperature of the module of the iv curve if available in `iv_data(self)` 
+
 ## About
 Multiple OPET loads connect to a single RS485 bus. This library provides an `OPETBus` object for the bus and an `OPET` object for each load on the bus.
 
