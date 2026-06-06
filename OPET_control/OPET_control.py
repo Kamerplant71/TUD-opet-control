@@ -275,8 +275,9 @@ class OPET:
             'iv_data_ready',
             'voltage_range_hold_up',
             'current_range_hold_up',
-            'dissipation_temerature_alarm',
-            'temperature monitoring_alarm'
+            'dissipation_over_temperature',
+            'dissipation_temerature_alarm_pin'
+            'dissipation_monitoring_offline'
         ]
         status = dict.fromkeys(status_bits, 0)
         for n, key in enumerate(status_bits):
@@ -284,6 +285,7 @@ class OPET:
                 status[key] = 1
         return status
 
+    @staticmethod
     def parse_system_iv_status_integer(integer):
         '''Parses the system iv curve status integer, returned as the `status` item
         into a human-readable
@@ -308,6 +310,29 @@ class OPET:
                 status[key] = 1
         return status
 
+    @staticmethod
+    def parse_active_devices(integer):
+        '''Parses all active devices, returned into a human-readable
+        dictionary.
+
+        Can be called without a device connection:
+            OPET.parse_active_devices(5)
+        '''
+        device_bits = [
+            'Device 1',
+            'Device 2',
+            'Device 3',
+            'Device 4',
+            'Device 5',
+            'Device 6',
+            'Device 7'
+        ]
+        devices = dict.fromkeys(device_bits, 0)
+        for n, key in enumerate(device_bits):
+            if integer & (1 << n):
+                devices[key] = 1
+        return devices
+    
     @property
     def status(self):
         return self.parse_system_status_integer(self.status_integer)
