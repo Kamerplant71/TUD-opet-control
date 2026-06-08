@@ -276,7 +276,7 @@ class OPET:
             'voltage_range_hold_up',
             'current_range_hold_up',
             'dissipation_over_temperature',
-            'dissipation_temerature_alarm_pin'
+            'dissipation_temerature_alarm_pin',
             'dissipation_monitoring_offline'
         ]
         status = dict.fromkeys(status_bits, 0)
